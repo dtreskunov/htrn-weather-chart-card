@@ -18745,7 +18745,8 @@ updateChart({ forecasts, forecastChart } = this) {
           justify-content: space-between;
           align-items: center;
           margin-bottom: 6px;
-	        font-weight: 300;
+          font-weight: 300;
+          direction: ltr;
         }
         .chart-container {
           position: relative;
@@ -18754,6 +18755,7 @@ updateChart({ forecasts, forecastChart } = this) {
         }
         .forecast-container {
           max-width: 100%;
+          direction: ltr;
         }
         .conditions {
           display: flex;
