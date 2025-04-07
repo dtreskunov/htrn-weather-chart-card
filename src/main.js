@@ -230,6 +230,7 @@ subscribeForecastEvents() {
     this.detachResizeObserver();
     if (this.forecastSubscriber) {
       this.forecastSubscriber.then((unsub) => unsub());
+      this.forecastSubscriber = undefined;
     }
   }
 
