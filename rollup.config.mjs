@@ -20,7 +20,7 @@ export default {
     file: 'dist/htrn-weather-chart-card.js',
     format: 'cjs',
     name: 'WeatherChartCard',
-    sourcemap: dev ? true : false,
+    sourcemap: true,
   },
   plugins: [
     resolve(),

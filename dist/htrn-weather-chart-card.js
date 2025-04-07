@@ -19279,3 +19279,4 @@ window.customCards.push({
   preview: true,
   documentationURL: "https://github.com/fancygaphtrn/htrn-weather-chart-card",
 });
+//# sourceMappingURL=htrn-weather-chart-card.js.map
