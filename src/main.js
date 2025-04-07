@@ -265,21 +265,31 @@ measureCard() {
   if (numberOfForecasts > 0) {
     this.forecastItems = numberOfForecasts;
     if (this.forecasts) {
-      const forecastContainer   = this.shadowRoot.querySelector('.forecast-container');
-      const chartContainer      = this.shadowRoot.querySelector('.chart-container');
-      const conditionsContainer = this.shadowRoot.querySelector('.conditions');
-      const windContainer       = this.shadowRoot.querySelector('.wind-details');
-
       let newWidth = (fontSize + 20) * Math.min(this.forecasts.length, this.forecastItems);
       if (newWidth < card.offsetWidth){
         newWidth = card.offsetWidth
       } else {
-        forecastContainer.style.width     = `${newWidth}px`;
-        forecastContainer.style.overflowX = 'scroll';
+        const forecastContainer   = this.shadowRoot.querySelector('.forecast-container');
+        const chartContainer      = this.shadowRoot.querySelector('.chart-container');
+        const conditionsContainer = this.shadowRoot.querySelector('.conditions');
+        const windContainer       = this.shadowRoot.querySelector('.wind-details');
+
+        if (forecastContainer) {
+          forecastContainer.style.width     = `${newWidth}px`;
+          forecastContainer.style.overflowX = 'scroll';
+        }
         
-        chartContainer.style.width      = `${newWidth + (fontSize * 2.5) + 5}px`;
-        conditionsContainer.style.width = `${newWidth + (fontSize * 2)}px`;
-        windContainer.style.width       = `${newWidth + (fontSize * 2)}px`;
+        if (chartContainer) {
+          chartContainer.style.width = `${newWidth + (fontSize * 2.5) + 5}px`;
+        }
+
+        if (conditionsContainer) {
+          conditionsContainer.style.width = `${newWidth + (fontSize * 2)}px`;
+        }
+
+        if (windContainer) {
+          windContainer.style.width = `${newWidth + (fontSize * 2)}px`;
+        }
       }
     }
   } else {  
