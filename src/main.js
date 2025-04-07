@@ -496,7 +496,7 @@ cancelAutoscroll() {
   }
 }
 
-drawChart({ config, language, weather, forecastItems } = this) {
+drawChart({ config, language } = this) {
   if (!this.forecasts || !this.forecasts.length) {
     return [];
   }
