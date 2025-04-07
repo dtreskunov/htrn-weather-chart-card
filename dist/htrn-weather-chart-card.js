@@ -17949,10 +17949,6 @@ setConfig(config) {
 
   cardConfig.units.speed = config.speed ? config.speed : cardConfig.units.speed;
 
-  this.baseIconPath = cardConfig.icon_style === 'style2' ?
-    'https://cdn.jsdelivr.net/gh/mlamberts78/weather-chart-card/dist/icons2/':
-    'https://cdn.jsdelivr.net/gh/mlamberts78/weather-chart-card/dist/icons/' ;
-
   this.config = cardConfig;
   if (!config.entity) {
     throw new Error('Please, define entity in the card config');
@@ -17995,6 +17991,10 @@ set hass(hass) {
     this.option2 = this.config.option2 in hass.states ? hass.states[this.config.option2] : null;
     this.option3 = this.config.option3 in hass.states ? hass.states[this.config.option3] : null;
   }
+
+  this.baseIconPath = hass.hassUrl(this.config.icon_style === 'style2' ?
+    '/hacsfiles/htrn-weather-chart-card/icons2/':
+    '/hacsfiles/htrn-weather-chart-card/icons/');
 
   if (this.weather && !this.forecastSubscriber) {
     this.subscribeForecastEvents();
@@ -18052,6 +18052,7 @@ subscribeForecastEvents() {
     this.detachResizeObserver();
     if (this.forecastSubscriber) {
       this.forecastSubscriber.then((unsub) => unsub());
+      this.forecastSubscriber = undefined;
     }
   }
 
@@ -18086,21 +18087,31 @@ measureCard() {
   if (numberOfForecasts > 0) {
     this.forecastItems = numberOfForecasts;
     if (this.forecasts) {
-      const forecastContainer   = this.shadowRoot.querySelector('.forecast-container');
-      const chartContainer      = this.shadowRoot.querySelector('.chart-container');
-      const conditionsContainer = this.shadowRoot.querySelector('.conditions');
-      const windContainer       = this.shadowRoot.querySelector('.wind-details');
-
       let newWidth = (fontSize + 20) * Math.min(this.forecasts.length, this.forecastItems);
       if (newWidth < card.offsetWidth){
         newWidth = card.offsetWidth;
       } else {
-        forecastContainer.style.width     = `${newWidth}px`;
-        forecastContainer.style.overflowX = 'scroll';
+        const forecastContainer   = this.shadowRoot.querySelector('.forecast-container');
+        const chartContainer      = this.shadowRoot.querySelector('.chart-container');
+        const conditionsContainer = this.shadowRoot.querySelector('.conditions');
+        const windContainer       = this.shadowRoot.querySelector('.wind-details');
+
+        if (forecastContainer) {
+          forecastContainer.style.width     = `${newWidth}px`;
+          forecastContainer.style.overflowX = 'scroll';
+        }
         
-        chartContainer.style.width      = `${newWidth + (fontSize * 2.5) + 5}px`;
-        conditionsContainer.style.width = `${newWidth + (fontSize * 2)}px`;
-        windContainer.style.width       = `${newWidth + (fontSize * 2)}px`;
+        if (chartContainer) {
+          chartContainer.style.width = `${newWidth + (fontSize * 2.5) + 5}px`;
+        }
+
+        if (conditionsContainer) {
+          conditionsContainer.style.width = `${newWidth + (fontSize * 2)}px`;
+        }
+
+        if (windContainer) {
+          windContainer.style.width = `${newWidth + (fontSize * 2)}px`;
+        }
       }
     }
   } else {  
@@ -18307,14 +18318,18 @@ cancelAutoscroll() {
   }
 }
 
-drawChart({ config, language, weather, forecastItems } = this) {
+drawChart({ config, language } = this, recursionDepth = 0) {
   if (!this.forecasts || !this.forecasts.length) {
     return [];
   }
 
   const chartCanvas = this.renderRoot && this.renderRoot.querySelector('#forecastChart');
   if (!chartCanvas) {
-    console.error('Canvas element not found:', this.renderRoot);
+    if (recursionDepth > 5) {
+      console.error('Canvas element not found even after waiting a few frames', this.renderRoot);
+      return;
+    }
+    requestAnimationFrame(() => this.drawChart({ config, language }, recursionDepth + 1));
     return;
   }
 
@@ -18334,13 +18349,8 @@ drawChart({ config, language, weather, forecastItems } = this) {
   var backgroundColor = style.getPropertyValue('--card-background-color');
   var textColor = style.getPropertyValue('--primary-text-color');
   var dividerColor = style.getPropertyValue('--divider-color');
-  const canvas = this.renderRoot.querySelector('#forecastChart');
-  if (!canvas) {
-    requestAnimationFrame(() => this.drawChart());
-    return;
-  }
 
-  const ctx = canvas.getContext('2d');
+  const ctx = chartCanvas.getContext('2d');
 
   let precipMax;
 

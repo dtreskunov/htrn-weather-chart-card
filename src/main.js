@@ -496,14 +496,18 @@ cancelAutoscroll() {
   }
 }
 
-drawChart({ config, language } = this) {
+drawChart({ config, language } = this, recursionDepth = 0) {
   if (!this.forecasts || !this.forecasts.length) {
     return [];
   }
 
   const chartCanvas = this.renderRoot && this.renderRoot.querySelector('#forecastChart');
   if (!chartCanvas) {
-    console.error('Canvas element not found:', this.renderRoot);
+    if (recursionDepth > 5) {
+      console.error('Canvas element not found even after waiting a few frames', this.renderRoot);
+      return;
+    }
+    requestAnimationFrame(() => this.drawChart({ config, language }, recursionDepth + 1));
     return;
   }
 
@@ -523,13 +527,8 @@ drawChart({ config, language } = this) {
   var backgroundColor = style.getPropertyValue('--card-background-color');
   var textColor = style.getPropertyValue('--primary-text-color');
   var dividerColor = style.getPropertyValue('--divider-color');
-  const canvas = this.renderRoot.querySelector('#forecastChart');
-  if (!canvas) {
-    requestAnimationFrame(() => this.drawChart());
-    return;
-  }
 
-  const ctx = canvas.getContext('2d');
+  const ctx = chartCanvas.getContext('2d');
 
   let precipMax;
 
