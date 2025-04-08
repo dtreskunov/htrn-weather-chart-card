@@ -480,11 +480,12 @@ autoscroll() {
         now.getDate(),
         now.getHours()+1,
     );
+    const timeout = nextHour - now;
     this.autoscrollTimeout = setTimeout(() => {
       this.autoscrollTimeout = null;
       this.updateChart();
-      drawChartOncePerHour();
-    }, nextHour - now);
+      updateChartOncePerHour();
+    }, timeout);
   };
 
   updateChartOncePerHour();
