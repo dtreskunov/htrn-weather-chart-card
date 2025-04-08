@@ -18563,8 +18563,8 @@ drawChart({ config, language } = this, recursionDepth = 0) {
         datalabels: {
           backgroundColor: backgroundColor,
           borderColor: context => context.dataset.backgroundColor,
-          borderRadius: 0,
-          borderWidth: 1.5,
+          borderRadius: 5,
+          borderWidth: 1,
           padding: config.forecast.precipitation_type === 'rainfall' && config.forecast.show_probability && config.forecast.type !== 'hourly' ? 3 : 4,
           color: chart_text_color || textColor,
           font: {
