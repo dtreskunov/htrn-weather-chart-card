@@ -18332,6 +18332,8 @@ drawChart({ config, language } = this, recursionDepth = 0) {
     }
     requestAnimationFrame(() => this.drawChart({ config, language }, recursionDepth + 1));
     return;
+  } else if (recursionDepth > 0) {
+    console.log(`Canvas element found after ${recursionDepth} frames`);
   }
 
   if (this.forecastChart) {
