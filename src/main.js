@@ -683,14 +683,14 @@ drawChart({ config, language } = this, recursionDepth = 0) {
               padding: config.forecast.precipitation_type === 'rainfall' && config.forecast.show_probability && config.forecast.type !== 'hourly' ? 4 : 10,
               callback: function(value, index, values) {
                 const dateObj = new Date(this.getLabelForValue(value));
-                const time = date.toLocaleTimeString(language, {
+                const time = dateObj.toLocaleTimeString(language, {
                   hour12: config.use_12hour_format,
                   hour: 'numeric'
                 }).replace('a.m.', 'AM').replace('p.m.', 'PM');
                 const weekday = dateObj.toLocaleString(language, { weekday: 'short' }).toUpperCase();
 
                 if (config.forecast.type === 'hourly') {
-                  if (date.getHours() === 0 && date.getMinutes() === 0) {
+                  if (dateObj.getHours() === 0 && dateObj.getMinutes() === 0) {
                     return [weekday, time];
                   } else {
                       return time;
