@@ -152,16 +152,17 @@ class HTRNWeatherChartCard extends LitElement {
       console.debug(`No source defined for weather attribute ${name}`);
       return undefined;
     }
+    let entityId, attr;
     const splitSource = source.split('.', 3);
     if (splitSource.length === 1) {
-      let entityId = this.config.entity;
-      let attr = source;
+      entityId = this.config.entity;
+      attr = source;
     } else if (splitSource.length === 2) {
-      let entityId = source;
-      let attr = undefined;
+      entityId = source;
+      attr = undefined;
     } else if (splitSource.length === 3) {
-      let entityId = splitSource.slice(0,2).join('.');
-      let attr = splitSource[2];
+      entityId = splitSource.slice(0,2).join('.');
+      attr = splitSource[2];
     }
     const entity = this._hass.states[entityId];
 
