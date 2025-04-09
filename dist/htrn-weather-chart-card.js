@@ -18925,35 +18925,45 @@ class HTRNWeatherChartCard extends s {
   `;
   }
 
-  renderAttributes({ config, humidity, pressure, windSpeed, windDirection, sun, language, uv_index, dew_point, wind_gust_speed, visibility, option1, option2, option3 } = this) {
-    let dWindSpeed = windSpeed;
-    let dPressure = pressure;
+  convertSpeed(speed, round = true) {
+    const inputUnit = this.weather.attributes.wind_speed_unit;
+    const outputUnit = this.config.units.speed;
+    let converted;
 
-    if (this.unitSpeed !== this.weather.attributes.wind_speed_unit) {
-      if (this.unitSpeed === 'm/s') {
-        if (this.weather.attributes.wind_speed_unit === 'km/h') {
-          dWindSpeed = Math.round(windSpeed * 1000 / 3600);
-        } else if (this.weather.attributes.wind_speed_unit === 'mph') {
-          dWindSpeed = Math.round(windSpeed * 0.44704);
-        }
-      } else if (this.unitSpeed === 'km/h') {
-        if (this.weather.attributes.wind_speed_unit === 'm/s') {
-          dWindSpeed = Math.round(windSpeed * 3.6);
-        } else if (this.weather.attributes.wind_speed_unit === 'mph') {
-          dWindSpeed = Math.round(windSpeed * 1.60934);
-        }
-      } else if (this.unitSpeed === 'mph') {
-        if (this.weather.attributes.wind_speed_unit === 'm/s') {
-          dWindSpeed = Math.round(windSpeed / 0.44704);
-        } else if (this.weather.attributes.wind_speed_unit === 'km/h') {
-          dWindSpeed = Math.round(windSpeed / 1.60934);
-        }
-      } else if (this.unitSpeed === 'Bft') {
-        dWindSpeed = this.calculateBeaufortScale(windSpeed);
+    if (!inputUnit) {
+      console.warn(`Unable to convert speed because ${this.config.entity} lacks attribute wind_speed_unit`);
+      converted = speed;
+    } else if (outputUnit === inputUnit) {
+      converted = speed;
+    } else if (outputUnit === 'm/s') {
+      if (inputUnit === 'km/h') {
+        converted = item.wind_speed * 1000 / 3600;
+      } else if (inputUnit === 'mph') {
+        converted = item.wind_speed * 0.44704;
       }
-    } else {
-      dWindSpeed = Math.round(dWindSpeed);
+    } else if (outputUnit === 'km/h') {
+      if (inputUnit === 'm/s') {
+        converted = item.wind_speed * 3.6;
+      } else if (inputUnit === 'mph') {
+        converted = item.wind_speed * 1.60934;
+      }
+    } else if (outputUnit === 'mph') {
+      if (inputUnit === 'm/s') {
+        converted = item.wind_speed / 0.44704;
+      } else if (inputUnit === 'km/h') {
+        converted = item.wind_speed / 1.60934;
+      }
+    } else if (outputUnit === 'Bft') {
+      converted = this.calculateBeaufortScale(item.wind_speed);
     }
+    if (round) {
+      return Math.round(converted);
+    }
+  }
+
+  renderAttributes({ config, humidity, pressure, windSpeed, windDirection, sun, language, uv_index, dew_point, wind_gust_speed, visibility, option1, option2, option3 } = this) {
+    let dWindSpeed = this.convertSpeed(windSpeed);
+    let dPressure = pressure;
 
     if (this.unitPressure !== this.weather.attributes.pressure_unit) {
       if (this.unitPressure === 'mmHg') {
@@ -19137,47 +19147,13 @@ class HTRNWeatherChartCard extends s {
     const forecast = this.forecast ? this.forecast.slice(0, forecastItems) : [];
 
     return x`
-    <div class="wind-details">
-      ${showWindForecast ? x`
-        ${forecast.map((item) => {
-      let dWindSpeed = item.wind_speed;
-
-      if (this.unitSpeed !== this.weather.attributes.wind_speed_unit) {
-        if (this.unitSpeed === 'm/s') {
-          if (this.weather.attributes.wind_speed_unit === 'km/h') {
-            dWindSpeed = Math.round(item.wind_speed * 1000 / 3600);
-          } else if (this.weather.attributes.wind_speed_unit === 'mph') {
-            dWindSpeed = Math.round(item.wind_speed * 0.44704);
-          }
-        } else if (this.unitSpeed === 'km/h') {
-          if (this.weather.attributes.wind_speed_unit === 'm/s') {
-            dWindSpeed = Math.round(item.wind_speed * 3.6);
-          } else if (this.weather.attributes.wind_speed_unit === 'mph') {
-            dWindSpeed = Math.round(item.wind_speed * 1.60934);
-          }
-        } else if (this.unitSpeed === 'mph') {
-          if (this.weather.attributes.wind_speed_unit === 'm/s') {
-            dWindSpeed = Math.round(item.wind_speed / 0.44704);
-          } else if (this.weather.attributes.wind_speed_unit === 'km/h') {
-            dWindSpeed = Math.round(item.wind_speed / 1.60934);
-          }
-        } else if (this.unitSpeed === 'Bft') {
-          dWindSpeed = this.calculateBeaufortScale(item.wind_speed);
-        }
-      } else {
-        dWindSpeed = Math.round(dWindSpeed);
-      }
-
-      return x`
-            <div class="wind-detail">
-              <ha-icon class="wind-icon" icon="hass:${this.getWindDirIcon(item.wind_bearing)}"></ha-icon>
-              <span class="wind-speed">${dWindSpeed}</span>
-            </div>
-          `;
-    })}
-      ` : ''}
-    </div>
-  `;
+      <div class="wind-details">${forecast.map(item => x`
+        <div class="wind-detail">
+          <ha-icon class="wind-icon" icon="hass:${this.getWindDirIcon(item.wind_bearing)}"></ha-icon>
+          <span class="wind-speed">${this.convertSpeed(item.wind_speed)}</span>
+        </div>`)}
+      </div>
+    `;
   }
 
   renderLastUpdated() {
@@ -19208,12 +19184,12 @@ class HTRNWeatherChartCard extends s {
     }
 
     return x`
-    <div class="updated">
-      <div>
-        ${formattedLastUpdated}
+      <div class="updated">
+        <div>
+          ${formattedLastUpdated}
+        </div>
       </div>
-    </div>
-  `;
+    `;
   }
 
   _fire(type, detail, options) {
