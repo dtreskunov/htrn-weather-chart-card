@@ -17887,23 +17887,23 @@ const DEFAULT_CONFIG = {
     speed: 'km/h',
   },
   sources: {
-    temperature: '.temperature',
-    temperature_unit: '.temperature_unit',
-    humidity: '.humidity',
-    pressure: '.pressure',
-    pressure_unit: '.pressure_unit',
-    uv_index: '.uv_index',
-    wind_speed: '.wind_speed',
-    wind_speed_unit: '.wind_speed_unit',
-    dew_point: '.dew_point',
-    dew_point_unit: '.temperature_unit',
-    wind_bearing: '.wind_bearing',
-    wind_gust_speed: '.wind_gust_speed',
-    wind_gust_speed_unit: '.wind_speed_unit',
-    visibility: '.visibility',
-    visibility_unit: '.visibility_unit',
-    apparent_temperature: '.apparent_temperature',
-    apparent_temperature_unit: '.temperature_unit',
+    temperature: 'temperature',
+    temperature_unit: 'temperature_unit',
+    humidity: 'humidity',
+    pressure: 'pressure',
+    pressure_unit: 'pressure_unit',
+    uv_index: 'uv_index',
+    wind_speed: 'wind_speed',
+    wind_speed_unit: 'wind_speed_unit',
+    dew_point: 'dew_point',
+    dew_point_unit: 'temperature_unit',
+    wind_bearing: 'wind_bearing',
+    wind_gust_speed: 'wind_gust_speed',
+    wind_gust_speed_unit: 'wind_speed_unit',
+    visibility: 'visibility',
+    visibility_unit: 'visibility_unit',
+    apparent_temperature: 'apparent_temperature',
+    apparent_temperature_unit: 'temperature_unit',
   },
 };
 
@@ -17963,17 +17963,28 @@ class HTRNWeatherChartCard extends s {
     };
   }
 
+  /**
+   * foo -> ${this.config.entity}.attributes.foo
+   * sensor.foo -> sensor.foo.state
+   * weather.alt_home.foo -> weather.alt_home.attributes.foo
+   */
   getCurrentWeatherAttribute(name) {
     const source = this.config.sources[name];
     if (!source) {
       console.debug(`No source defined for weather attribute ${name}`);
       return undefined;
     }
-    const [entity_id, attr] = source.split('.', 2);
-    const entity = this._hass.states[entity_id || this.config.entity];
+    const splitSource = source.split('.', 3);
+    if (splitSource.length === 1) {
+      this.config.entity;
+    } else if (splitSource.length === 2) ; else if (splitSource.length === 3) {
+      splitSource.slice(0,2).join('.');
+      splitSource[2];
+    }
+    const entity = this._hass.states[entityId];
 
     if (!entity) {
-      console.debug(`Weather attribute ${name} not found in ${source}`);
+      console.debug(`Entity ${entityId} not found for weather attribute ${name}, mapped to ${source}`);
       return undefined;
     }
     
