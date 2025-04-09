@@ -17963,52 +17963,58 @@ set hass(hass) {
   this.unitPressure = this.config.units.pressure ? this.config.units.pressure : this.weather && this.weather.attributes.pressure_unit;
   this.unitVisibility = this.config.units.visibility ? this.config.units.visibility : this.weather && this.weather.attributes.visibility_unit;
   this.weather = this.config.entity in hass.states
-    ? hass.states[this.config.entity]
+    ? hass.states.get[this.config.entity]
     : null;
-  if (!this.weather || this.weather.state == "unavailable") {
-    this.weather = null;
+    
+  if (!this.weather) { // || this.weather.state == "unavailable") {
+    console.error(`weather entity ${this.config.entity} is absent`);
+    return;
   }
-  if (this.weather) {
-    this.temperature = this.config.temp ? hass.states[this.config.temp].state : this.weather.attributes.temperature;
-    this.humidity = this.config.humid ? hass.states[this.config.humid].state : this.weather.attributes.humidity;
-    this.pressure = this.config.press ? hass.states[this.config.press].state : this.weather.attributes.pressure;
-    this.uv_index = this.config.uv ? hass.states[this.config.uv].state : this.weather.attributes.uv_index;
-    this.windSpeed = this.config.windspeed ? hass.states[this.config.windspeed].state : this.weather.attributes.wind_speed;
-    this.dew_point = this.config.dew_point ? hass.states[this.config.dew_point].state : this.weather.attributes.dew_point;
-    this.wind_gust_speed = this.config.wind_gust_speed ? hass.states[this.config.wind_gust_speed].state : this.weather.attributes.wind_gust_speed;
-    this.visibility = this.config.visibility ? hass.states[this.config.visibility].state : this.weather.attributes.visibility;
+  this.temperature = this.config.temp ? hass.states[this.config.temp].state : this.weather.attributes.temperature;
+  this.humidity = this.config.humid ? hass.states[this.config.humid].state : this.weather.attributes.humidity;
+  this.pressure = this.config.press ? hass.states[this.config.press].state : this.weather.attributes.pressure;
+  this.uv_index = this.config.uv ? hass.states[this.config.uv].state : this.weather.attributes.uv_index;
+  this.windSpeed = this.config.windspeed ? hass.states[this.config.windspeed].state : this.weather.attributes.wind_speed;
+  this.dew_point = this.config.dew_point ? hass.states[this.config.dew_point].state : this.weather.attributes.dew_point;
+  this.wind_gust_speed = this.config.wind_gust_speed ? hass.states[this.config.wind_gust_speed].state : this.weather.attributes.wind_gust_speed;
+  this.visibility = this.config.visibility ? hass.states[this.config.visibility].state : this.weather.attributes.visibility;
 
-    if (this.config.winddir && hass.states[this.config.winddir] && hass.states[this.config.winddir].state !== undefined) {
-      this.windDirection = parseFloat(hass.states[this.config.winddir].state);
-    } else {
-      this.windDirection = this.weather.attributes.wind_bearing;
-    }
-
-    this.feels_like = this.config.feels_like && hass.states[this.config.feels_like] ? hass.states[this.config.feels_like].state : this.weather.attributes.apparent_temperature;
-    this.description = this.config.description && hass.states[this.config.description] ? hass.states[this.config.description].state : this.weather.attributes.description;
-
-    this.option1 = this.config.option1 in hass.states ? hass.states[this.config.option1] : null;
-    this.option2 = this.config.option2 in hass.states ? hass.states[this.config.option2] : null;
-    this.option3 = this.config.option3 in hass.states ? hass.states[this.config.option3] : null;
+  if (this.config.winddir && hass.states[this.config.winddir] && hass.states[this.config.winddir].state !== undefined) {
+    this.windDirection = parseFloat(hass.states[this.config.winddir].state);
+  } else {
+    this.windDirection = this.weather.attributes.wind_bearing;
   }
 
-  this.baseIconPath = hass.hassUrl(this.config.icon_style === 'style2' ?
-    '/hacsfiles/htrn-weather-chart-card/icons2/':
-    '/hacsfiles/htrn-weather-chart-card/icons/');
+  this.feels_like = this.config.feels_like && hass.states[this.config.feels_like] ? hass.states[this.config.feels_like].state : this.weather.attributes.apparent_temperature;
+  this.description = this.config.description && hass.states[this.config.description] ? hass.states[this.config.description].state : this.weather.attributes.description;
 
-  if (this.weather && !this.forecastSubscriber) {
-    this.subscribeForecastEvents();
+  this.option1 = this.config.option1 in hass.states ? hass.states[this.config.option1] : null;
+  this.option2 = this.config.option2 in hass.states ? hass.states[this.config.option2] : null;
+  this.option3 = this.config.option3 in hass.states ? hass.states[this.config.option3] : null;
+
+  this.baseIconPath = hass.hassUrl(`/hacsfiles/htrn-weather-chart-card/${this.config.icon_style === 'style2' ? 'icons2' : 'icons'}/`);
+  this.subscribeForecastEvents();
+}
+
+unsubscribeForecastEvents() {
+  if (!this.subscription) {
+    return;
   }
+  this.subscription.then(unsubscribe => unsubscribe());
+  this.subscription = undefined;
 }
 
 subscribeForecastEvents() {
-  this.config.forecast.type || 'daily';
-
   //const feature = isHourly ? WeatherEntityFeature.FORECAST_HOURLY : WeatherEntityFeature.FORECAST_DAILY;
   //if (!this.supportsFeature(feature)) {
   //  console.error(`Weather entity "${this.config.entity}" does not support ${isHourly ? 'hourly' : 'daily'} forecasts.`);
   //  return;
   //}
+
+  if (this.subscription) {
+    console.log('Already subscribed for messages with type: weather/subscribe_forecast');
+    return;
+  }
 
   const callback = (event) => {
     this.forecasts = event.forecast;
@@ -18016,7 +18022,9 @@ subscribeForecastEvents() {
     this.drawChart();
   };
 
-  this.forecastSubscriber = this._hass.connection.subscribeMessage(callback, {
+  // returns promise that resolves to an unsubscribe function
+  // See https://github.com/home-assistant/home-assistant-js-websocket
+  this.subscription = this._hass.connection.subscribeMessage(callback, {
     type: "weather/subscribe_forecast",
     forecast_type: this.config.forecast.type,
     entity_id: this.config.entity,
@@ -18050,10 +18058,7 @@ subscribeForecastEvents() {
   disconnectedCallback() {
     super.disconnectedCallback();
     this.detachResizeObserver();
-    if (this.forecastSubscriber) {
-      this.forecastSubscriber.then((unsub) => unsub());
-      this.forecastSubscriber = undefined;
-    }
+    this.unsubscribeForecastEvents();
   }
 
   attachResizeObserver() {
@@ -18263,10 +18268,7 @@ async updated(changedProperties) {
     const autoscrollChanged = oldConfig && this.config.autoscroll !== oldConfig.autoscroll;
 
     if (entityChanged || forecastTypeChanged) {
-      if (this.forecastSubscriber && typeof this.forecastSubscriber === 'function') {
-        this.forecastSubscriber();
-      }
-
+      this.unsubscribeForecastEvents();
       this.subscribeForecastEvents();
     }
 
@@ -18559,7 +18561,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
           caretPadding: 15,
           callbacks: {
             title: tooltipItem => {
-              var datetime = tooltipItem[0].label;
+              const datetime = tooltipItem[0].label;
               return new Date(datetime).toLocaleDateString(language, {
                 month: 'short',
                 day: 'numeric',
@@ -18578,36 +18580,36 @@ drawChart({ config, language } = this, recursionDepth = 0) {
 }
 
 computeForecastData({ config, forecastItems } = this) {
-  var forecast = this.forecasts ? this.forecasts.slice(0, forecastItems) : [];
-  var roundTemp = config.forecast.round_temp == true;
-  var dateTime = [];
-  var tempHigh = [];
-  var tempLow = [];
-  var precip = [];
+  const forecast = this.forecasts ? this.forecasts.slice(0, forecastItems) : [];
+  const dateTime = [];
+  const tempHigh = [];
+  const tempLow = [];
+  const precip = [];
 
-  for (const d of forecast) {
+  for (const forecastPoint of forecast) {
     if (config.autoscroll) {
       const cutoff = (config.forecast.type === 'hourly' ? 1 : 24) * 60 * 60 * 1000;
-      if (new Date() - new Date(d.datetime) > cutoff) {
+      if (new Date() - new Date(forecastPoint.datetime) > cutoff) {
         continue;
       }
     }
-    dateTime.push(d.datetime);
+    dateTime.push(forecastPoint.datetime);
 
-    let tempHighVal = null, tempLowVal = null;
+    let tempHighVal = null;
+    let tempLowVal = null;
     if (config.forecast.type === 'twice_daily' ) {
-      if (d.is_daytime || this.mode == 'hourly') {
-        tempHighVal = d.temperature;
+      if (forecastPoint.is_daytime || this.mode == 'hourly') {
+        tempHighVal = forecastPoint.temperature;
       } else {
-        tempLowVal = d.temperature;
+        tempLowVal = forecastPoint.temperature;
       }
     } else {
-      tempHighVal = d.temperature;
-      if (typeof d.templow !== 'undefined') {
-        tempLowVal = d.templow;
+      tempHighVal = forecastPoint.temperature;
+      if (typeof forecastPoint.templow !== 'undefined') {
+        tempLowVal = forecastPoint.templow;
       }
   
-      if (roundTemp) {
+      if (config.forecast.round_temp == true) {
         tempHighVal = Math.round(tempHighVal);
         if (typeof tempLowVal === 'number') {
           tempLowVal = Math.round(tempLowVal);
@@ -18618,14 +18620,14 @@ computeForecastData({ config, forecastItems } = this) {
     tempLow.push(tempLowVal);
 
     if (config.forecast.precipitation_type === 'probability') {
-      if (typeof d.precipitation_probability == 'number') {
-        precip.push(d.precipitation_probability);
+      if (typeof forecastPoint.precipitation_probability == 'number') {
+        precip.push(forecastPoint.precipitation_probability);
       } else {
         precip.push(0);
       }
     } else {
-      if (typeof d.precipitation == 'number') {
-        precip.push(d.precipitation);
+      if (typeof forecastPoint.precipitation == 'number') {
+        precip.push(forecastPoint.precipitation);
       } else {
         precip.push(0);
       }
