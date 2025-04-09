@@ -519,8 +519,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
   var textColor = style.getPropertyValue('--primary-text-color');
   var dividerColor = style.getPropertyValue('--divider-color');
 
-  const ctx = chartCanvas.getContext('2d');
-
+  const tempUnit = this.weather.attributes.temperature_unit;
   let precipMax;
   let precipUnit;
 
@@ -637,7 +636,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
     tooltip: {
       callbacks: {
         label: context => {
-          let formattedLabel = `${context.dataset.label}: ${context.formattedValue}`;
+          let formattedLabel = `${context.dataset.label}: ${context.formattedValue}${precipUnit}`;
           if (!config.forecast.show_probability && config.forecast.precipitation_type !== 'probability') {
             const probability = forecast[context.dataIndex].precipitation_probability;
             if (probability !== undefined && probability !== null) {
@@ -653,7 +652,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
   if (this.forecastChart) {
     this.forecastChart.destroy();
   }
-  this.forecastChart = new Chart(ctx, {
+  this.forecastChart = new Chart(chartCanvas.getContext('2d'), {
     type: 'bar',
     data: {
       labels: dateTime,
@@ -746,7 +745,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
                 hour12: config.use_12hour_format,
               });
             },
-            label: context => `${context.dataset.label}: ${context.formattedValue}`,
+            label: context => `${context.dataset.label}: ${context.formattedValue}${tempUnit}`,
           },
         },
       },
