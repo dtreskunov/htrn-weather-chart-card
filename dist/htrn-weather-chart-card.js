@@ -18392,9 +18392,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
       size: config.forecast.labels_font_size,
       lineHeight: 0.7,
     },
-    formatter: function (value, context) {
-      return context.dataset.data[context.dataIndex] + '°';
-    },
+    formatter: (value, context) => context.dataset.data[context.dataIndex] + '°',
   };
 
   const tempHiDataset = {
@@ -18411,10 +18409,6 @@ drawChart({ config, language } = this, recursionDepth = 0) {
       backgroundColor: 'transparent',
       borderColor: 'transparent',
       color: chart_text_color || config.forecast.temperature1_color,
-      font: {
-        size: parseInt(config.forecast.labels_font_size) + 1,
-        lineHeight: 0.7,
-      },
     },
   };
 
@@ -18432,13 +18426,6 @@ drawChart({ config, language } = this, recursionDepth = 0) {
       backgroundColor: 'transparent',
       borderColor: 'transparent',
       color: chart_text_color || config.forecast.temperature2_color,
-      font: {
-        size: parseInt(config.forecast.labels_font_size) + 1,
-        lineHeight: 0.7,
-      },
-      formatter: function (value, context) {
-        return context.dataset.data[context.dataIndex] + '°';
-      },
     },
   };
 
@@ -18458,10 +18445,8 @@ drawChart({ config, language } = this, recursionDepth = 0) {
       anchor: 'start',
       offset: -10,
   
-      display: function (context) {
-        return context.dataset.data[context.dataIndex] > 0;
-      },
-      formatter: function (value, context) {
+      display: context => context.dataset.data[context.dataIndex] > 0,
+      formatter: (value, context) => {
         const rainfall = context.dataset.data[context.dataIndex];
         let formattedValue = `${rainfall.toFixed(rainfall > 1 ? 0 : 1)} ${this.ll('units')[precipUnit]}`;
   
@@ -18477,7 +18462,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
 
     tooltip: {
       callbacks: {
-        label: function (context) {
+        label: context => {
           let formattedLabel = `${context.dataset.label}: ${context.formattedValue}`;
           if (!config.forecast.show_probability && config.forecast.precipitation_type !== 'probability') {
             const probability = forecast[context.dataIndex].precipitation_probability;
@@ -18519,31 +18504,24 @@ drawChart({ config, language } = this, recursionDepth = 0) {
               maxRotation: 0,
               color: config.forecast.chart_datetime_color || textColor,
               padding: config.forecast.precipitation_type === 'rainfall' && config.forecast.show_probability && config.forecast.type !== 'hourly' ? 4 : 10,
-              callback: function (value, index, values) {
-                  var datetime = this.getLabelForValue(value);
-                  var dateObj = new Date(datetime);
-        
-                  var timeFormatOptions = {
-                      hour12: config.use_12hour_format,
-                      hour: 'numeric'
-                  };
+              callback: (value, index, values) => {
+                const dateObj = new Date(this.getLabelForValue(value));
+                const time = date.toLocaleTimeString(language, {
+                  hour12: config.use_12hour_format,
+                  hour: 'numeric'
+                }).replace('a.m.', 'AM').replace('p.m.', 'PM');
+                const weekday = dateObj.toLocaleString(language, { weekday: 'short' }).toUpperCase();
 
-                  var time = dateObj.toLocaleTimeString(language, timeFormatOptions);
-
-                  if (dateObj.getHours() === 0 && dateObj.getMinutes() === 0 && config.forecast.type === 'hourly') {
-                      var date = dateObj.toLocaleString(language, { weekday: 'short' }).toUpperCase();
-                      time = time.replace('a.m.', 'AM').replace('p.m.', 'PM');
-                      return [date, time];
+                if (config.forecast.type === 'hourly') {
+                  if (date.getHours() === 0 && date.getMinutes() === 0) {
+                    return [weekday, time];
+                  } else {
+                      return time;
                   }
-
-                  if (config.forecast.type !== 'hourly') {
-                      var weekday = dateObj.toLocaleString(language, { weekday: 'short' }).toUpperCase();
-                      return weekday;
-                  }
-
-                  time = time.replace('a.m.', 'AM').replace('p.m.', 'PM');
-                  return time;
-              },
+                } else {
+                  return weekday;
+                }
+            },
           },
           reverse: document.dir === 'rtl' ? true : false,
         },
@@ -18580,8 +18558,8 @@ drawChart({ config, language } = this, recursionDepth = 0) {
           caretSize: 0,
           caretPadding: 15,
           callbacks: {
-            title: function (TooltipItem) {
-              var datetime = TooltipItem[0].label;
+            title: tooltipItem => {
+              var datetime = tooltipItem[0].label;
               return new Date(datetime).toLocaleDateString(language, {
                 month: 'short',
                 day: 'numeric',
@@ -18591,9 +18569,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
                 hour12: config.use_12hour_format,
               });
             },
-            label: function (context) {
-              return `${context.dataset.label}: ${context.formattedValue}`;
-            },
+            label: context => `${context.dataset.label}: ${context.formattedValue}`,
           },
         },
       },
