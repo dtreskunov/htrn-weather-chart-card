@@ -17904,7 +17904,7 @@ static getStubConfig(hass, unusedEntities, allEntities) {
       windDirection: {type: Number},
       forecastChart: {type: Object},
       forecastItems: {type: Number},
-      forecasts: { type: Array }
+      forecast: { type: Array }
     };
   }
 
@@ -18014,8 +18014,8 @@ subscribeForecastEvents() {
     return;
   }
 
-  const callback = (event) => {
-    this.forecasts = event.forecast;
+  const callback = ({forecast}) => {
+    this.forecast = forecast;
     this.requestUpdate();
     this.drawChart();
   };
@@ -18089,8 +18089,8 @@ measureCard() {
 
   if (numberOfForecasts > 0) {
     this.forecastItems = numberOfForecasts;
-    if (this.forecasts) {
-      let newWidth = (fontSize + 20) * Math.min(this.forecasts.length, this.forecastItems);
+    if (this.forecast) {
+      let newWidth = (fontSize + 20) * Math.min(this.forecast.length, this.forecastItems);
       if (newWidth < card.offsetWidth){
         newWidth = card.offsetWidth;
       } else {
@@ -18270,7 +18270,7 @@ async updated(changedProperties) {
       this.subscribeForecastEvents();
     }
 
-    if (this.forecasts && this.forecasts.length) {
+    if (this.forecast && this.forecast.length) {
       this.drawChart();
     }
 
@@ -18319,21 +18319,16 @@ cancelAutoscroll() {
   }
 }
 
-drawChart({ config, language } = this, recursionDepth = 0) {
-  if (!this.forecasts || !this.forecasts.length) {
-    return [];
+drawChart({ config, language } = this) {
+  if (!this.forecast || !this.forecast.length) {
+    console.log('drawChart: no forecast');
+    return;
   }
 
-  const chartCanvas = this.renderRoot && this.renderRoot.querySelector('#forecastChart');
-  if (!chartCanvas) {
-    if (recursionDepth > 5) {
-      console.error('Canvas element not found even after waiting a few frames', this.renderRoot);
-      return;
-    }
-    requestAnimationFrame(() => this.drawChart({ config, language }, recursionDepth + 1));
+  const forecastCanvas = this.renderRoot && this.renderRoot.querySelector('canvas#forecastCanvas');
+  if (!forecastCanvas) {
+    console.log('drawChart: canvas element not found');
     return;
-  } else if (recursionDepth > 0) {
-    console.log(`Canvas element found after ${recursionDepth} frames`);
   }
 
   var style = getComputedStyle(document.body);
@@ -18367,7 +18362,6 @@ drawChart({ config, language } = this, recursionDepth = 0) {
   Chart.defaults.elements.point.hitRadius = 10;
 
   const {
-    forecast,
     dateTime,
     tempHigh,
     tempLow,
@@ -18446,7 +18440,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
         let formattedValue = `${rainfall.toFixed(rainfall > 1 ? 0 : 1)} ${this.ll('units')[precipUnit]}`;
   
         if (config.forecast.show_probability && config.forecast.precipitation_type !== 'probability') {
-          const probability = forecast[context.dataIndex].precipitation_probability;
+          const probability = this.forecast[context.dataIndex].precipitation_probability;
           if (probability !== undefined && probability !== null) {
             formattedValue += `\n\n${probability.toFixed(0)}%`;
           }
@@ -18460,7 +18454,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
         label: context => {
           let formattedLabel = `${context.dataset.label}: ${context.formattedValue}${precipUnit}`;
           if (!config.forecast.show_probability && config.forecast.precipitation_type !== 'probability') {
-            const probability = forecast[context.dataIndex].precipitation_probability;
+            const probability = this.forecast[context.dataIndex].precipitation_probability;
             if (probability !== undefined && probability !== null) {
               formattedLabel += ` / ${probability.toFixed(0)}%`;
             }
@@ -18474,7 +18468,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
   if (this.forecastChart) {
     this.forecastChart.destroy();
   }
-  this.forecastChart = new Chart(chartCanvas.getContext('2d'), {
+  this.forecastChart = new Chart(forecastCanvas.getContext('2d'), {
     type: 'bar',
     data: {
       labels: dateTime,
@@ -18576,7 +18570,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
 }
 
 computeForecastData({ config, forecastItems } = this) {
-  const forecast = this.forecasts ? this.forecasts.slice(0, forecastItems) : [];
+  const forecast = this.forecast ? this.forecast.slice(0, forecastItems) : [];
   const dateTime = [];
   const tempHigh = [];
   const tempLow = [];
@@ -18631,7 +18625,6 @@ computeForecastData({ config, forecastItems } = this) {
   }
 
   return {
-    forecast,
     dateTime,
     tempHigh,
     tempLow,
@@ -18639,14 +18632,13 @@ computeForecastData({ config, forecastItems } = this) {
   }
 }
 
-updateChart({ forecasts, forecastChart } = this) {
-  if (!forecasts || !forecasts.length) {
+updateChart({ forecast, forecastChart } = this) {
+  if (!forecast || !forecast.length) {
     return [];
   }
 
   if (forecastChart) {
     const {
-      forecast,
       dateTime,
       tempHigh,
       tempLow,
@@ -18828,7 +18820,7 @@ updateChart({ forecasts, forecastChart } = this) {
           ${this.renderAttributes()}
           <div class="forecast-container">
             <div class="chart-container">
-              <canvas id="forecastChart"></canvas>
+              <canvas id="forecastCanvas"></canvas>
             </div>
             ${this.renderForecastConditionIcons()}
             ${this.renderWind()}
@@ -19086,7 +19078,7 @@ const timeOptions = {
 }
 
 renderForecastConditionIcons({ config, forecastItems, sun } = this) {
-  const forecast = this.forecasts ? this.forecasts.slice(0, forecastItems) : [];
+  const forecast = this.forecast ? this.forecast.slice(0, forecastItems) : [];
 
   if (config.forecast.condition_icons === false) {
     return x``;
@@ -19151,7 +19143,7 @@ renderWind({ config, weather, windSpeed, windDirection, forecastItems } = this) 
     return x``;
   }
 
-  const forecast = this.forecasts ? this.forecasts.slice(0, forecastItems) : [];
+  const forecast = this.forecast ? this.forecast.slice(0, forecastItems) : [];
 
   return x`
     <div class="wind-details">
