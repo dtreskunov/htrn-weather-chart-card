@@ -26,7 +26,7 @@ const DEFAULT_CONFIG = {
   show_day: false,
   show_description: false,
   show_dew_point: false,
-  show_feels_like: false,
+  show_apparent_temperature: false,
   show_humidity: true,
   show_last_changed: false,
   show_main: true,
@@ -35,8 +35,9 @@ const DEFAULT_CONFIG = {
   show_temperature: true,
   show_time_seconds: false,
   show_time: false,
+  show_uv_index: true,
   show_visibility: false,
-  show_wind_direction: true,
+  show_wind_bearing: true,
   show_wind_gust_speed: false,
   show_wind_speed: true,
   time_size: 26,
@@ -59,6 +60,7 @@ const DEFAULT_CONFIG = {
     type: 'daily',
   },
   units: {
+    distance: 'km',
     pressure: 'hPa',
     speed: 'km/h',
   },
@@ -107,14 +109,9 @@ class HTRNWeatherChartCard extends LitElement {
       language: {},
       sun: { type: Object },
       weather: { type: Object },
-      // temperature: { type: Object },
-      humidity: { type: Object },
-      // pressure: { type: Object },
-      windSpeed: { type: Object },
       option1: { type: Object },
       option2: { type: Object },
       option3: { type: Object },
-      windDirection: { type: Number },
       forecastChart: { type: Object },
       forecastItems: { type: Number },
       forecast: { type: Array }
@@ -176,16 +173,16 @@ class HTRNWeatherChartCard extends LitElement {
     this.unitVisibility = this.config.units.visibility ? this.config.units.visibility : this.weather && this.weather.attributes.visibility_unit;
 
     // this.temperature = this.getCurrentWeatherAttribute('temperature');
-    this.humidity = this.getCurrentWeatherAttribute('humidity');
+    // this.humidity = this.getCurrentWeatherAttribute('humidity');
     // this.pressure = this.getCurrentWeatherAttribute('pressure');
-    this.uv_index = this.getCurrentWeatherAttribute('uv_index');
-    this.windSpeed = this.getCurrentWeatherAttribute('wind_speed');
-    this.dew_point = this.getCurrentWeatherAttribute('dew_point');
-    this.wind_gust_speed = this.getCurrentWeatherAttribute('wind_gust_speed');
-    this.visibility = this.getCurrentWeatherAttribute('visibility');
-    this.windDirection = this.getCurrentWeatherAttribute('wind_bearing');
-    this.feels_like = this.getCurrentWeatherAttribute('apparent_temperature');
-    this.description = this.config.description && hass.states[this.config.description] ? hass.states[this.config.description].state : this.weather.attributes.description;
+    // this.uv_index = this.getCurrentWeatherAttribute('uv_index');
+    // this.windSpeed = this.getCurrentWeatherAttribute('wind_speed');
+    // this.dew_point = this.getCurrentWeatherAttribute('dew_point');
+    // this.wind_gust_speed = this.getCurrentWeatherAttribute('wind_gust_speed');
+    // this.visibility = this.getCurrentWeatherAttribute('visibility');
+    // this.windDirection = this.getCurrentWeatherAttribute('wind_bearing');
+    // this.feels_like = this.getCurrentWeatherAttribute('apparent_temperature');
+    // this.description = this.config.description && hass.states[this.config.description] ? hass.states[this.config.description].state : this.weather.attributes.description;
 
     this.option1 = this.config.option1 in hass.states ? hass.states[this.config.option1] : null;
     this.option2 = this.config.option2 in hass.states ? hass.states[this.config.option2] : null;
@@ -412,18 +409,13 @@ class HTRNWeatherChartCard extends LitElement {
     }
   }
 
-  calculateBeaufortScale(windSpeed) {
+  calculateBeaufortScale(windSpeed, wind_speed_unit) {
     const unitConversion = {
       'km/h': 1,
       'm/s': 3.6,
       'mph': 1.60934,
     };
 
-    if (!this.weather || !this.weather.attributes.wind_speed_unit) {
-      throw new Error('wind_speed_unit not available in weather attributes.');
-    }
-
-    const wind_speed_unit = this.weather.attributes.wind_speed_unit;
     const conversionFactor = unitConversion[wind_speed_unit];
 
     if (typeof conversionFactor !== 'number') {
@@ -1030,7 +1022,7 @@ class HTRNWeatherChartCard extends LitElement {
               <canvas id="forecastCanvas"></canvas>
             </div>
             ${this.renderForecastConditionIcons()}
-            ${this.renderWind()}
+            ${this.renderWindForecast()}
           </div>
           ${this.renderLastUpdated()}
         </div>
@@ -1038,7 +1030,7 @@ class HTRNWeatherChartCard extends LitElement {
     `;
   }
 
-  renderMain({ config, sun, weather, temperature, feels_like, description } = this) {
+  renderMain({ config, sun, weather } = this) {
     if (config.show_main === false)
       return html``;
 
@@ -1046,21 +1038,10 @@ class HTRNWeatherChartCard extends LitElement {
     const showTime = config.show_time;
     const showDay = config.show_day;
     const showDate = config.show_date;
-    const showFeelsLike = config.show_feels_like;
-    const showDescription = config.show_description;
-    const showCurrentCondition = config.show_current_condition !== false;
-    const showTemperature = config.show_temperature !== false;
     const showSeconds = config.show_time_seconds === true;
 
-    let roundedTemperature = parseFloat(temperature);
-    if (!isNaN(roundedTemperature) && roundedTemperature % 1 !== 0) {
-      roundedTemperature = Math.round(roundedTemperature * 10) / 10;
-    }
-
-    let roundedFeelsLike = parseFloat(feels_like);
-    if (!isNaN(roundedFeelsLike) && roundedFeelsLike % 1 !== 0) {
-      roundedFeelsLike = Math.round(roundedFeelsLike * 10) / 10;
-    }
+    const temperature = config.show_temperature ? this.getCurrentWeatherAttribute('temperature') : undefined;
+    const apparentTemperature = config.show_apparent_temperature ? this.getCurrentWeatherAttribute('apparent_temperature') : undefined;
 
     const iconHtml = config.animated_icons || config.icons
       ? html`<img src="${this.getWeatherIcon(weather.state, sun.state)}" alt="">`
@@ -1105,24 +1086,22 @@ class HTRNWeatherChartCard extends LitElement {
       setInterval(updateClock, 1000);
     }
 
+    const current_condition = config.show_current_condition ? this.ll(weather.state) : undefined;
+    const description = config.show_description ? this.getCurrentWeatherAttribute('description') : undefined;
+
     return html`
     <div class="main">
       ${iconHtml}
       <div>
         <div>
-          ${showTemperature ? html`${roundedTemperature}<span>${this.getUnit('temperature')}</span>` : ''}
-          ${showFeelsLike && roundedFeelsLike ? html`
-            <div class="feels-like">
-              ${this.ll('feelsLike')}
-              ${roundedFeelsLike}${this.getUnit('temperature')}
-            </div>
-          ` : ''}
-          ${showCurrentCondition ? html`
+          ${temperature ? html`${temperature.toFixed(0)}<span>${this.getUnit('temperature')}</span>` : ''}
+          ${apparentTemperature ? html`<div class="feels-like">${this.ll('feelsLike')}${apparentTemperature.toFixed(0)}${this.getUnit('temperature')}</div>` : ''}
+          ${current_condition ? html`
             <div class="current-condition">
-              <span>${this.ll(weather.state)}</span>
+              <span>${current_condition}</span>
             </div>
           ` : ''}
-          ${showDescription ? html`
+          ${description ? html`
             <div class="description">
               ${description}
             </div>
@@ -1168,7 +1147,7 @@ class HTRNWeatherChartCard extends LitElement {
         output = input / 1.60934;
       }
     } else if (outputUnit === 'Bft') {
-      output = this.calculateBeaufortScale(input);
+      output = this.calculateBeaufortScale(input, inputUnit);
     } else {
       console.warn(`Unable to convert to ${outputUnit}`);
       output = input;
@@ -1212,51 +1191,74 @@ class HTRNWeatherChartCard extends LitElement {
     return output.toFixed(outputPrecision);
   }
 
-  renderAttributes({ config, humidity, windDirection, sun, language, uv_index, dew_point, wind_gust_speed, visibility, option1, option2, option3 } = this) {
+  convertDistance(input, inputUnit, outputUnit = this.config.units.distance) {
+    input = parseFloat(input);
+    let output, outputPrecision = 1;
+    if (typeof inputUnit === 'undefined') {
+      console.warn(`Unable to convert because the input unit is undefined`);
+      output = input;
+    } else {
+      console.warn(`Unable to convert to ${outputUnit}`);
+      output = input;
+    }
+    return output.toFixed(outputPrecision);
+  }
+
+  renderAttributes({ config, sun, language, option1, option2, option3 } = this) {
     if (config.show_attributes == false)
       return html``;
 
-    const windSpeed = config.show_wind_speed !== false ? this.convertSpeed(
+    const wind_speed = config.show_wind_speed ? `${this.convertSpeed(
       this.getCurrentWeatherAttribute('wind_speed'),
       this.getCurrentWeatherAttribute('wind_speed_unit'),
-      this.config.units.speed) : undefined;
+      this.config.units.speed)} ${this.ll('units')[this.config.units.speed]}` : undefined;
 
-    const pressure = config.show_pressure !== false ? this.convertPressure(
+    const wind_gust_speed = config.show_wind_gust_speed ? `${this.convertSpeed(
+      this.getCurrentWeatherAttribute('wind_gust_speed'),
+      this.getCurrentWeatherAttribute('wind_gust_speed_unit'),
+      this.config.units.speed)} ${this.ll('units')[this.config.units.speed]}` : undefined;
+
+    const pressure = config.show_pressure ? `${this.convertPressure(
       this.getCurrentWeatherAttribute('pressure'),
       this.getCurrentWeatherAttribute('pressure_unit'),
-      this.config.units.speed) : undefined;
+      this.config.units.pressure)} ${this.ll('units')[this.config.units.pressure]}` : undefined;
+    
+    const visibility = config.show_visibility ? `${this.convertDistance(
+      this.getCurrentWeatherAttribute('visibility'),
+      this.getCurrentWeatherAttribute('visibility_unit'),
+      this.config.units.distance)} ${this.ll('units')[this.config.units.distance]}` : undefined;
 
-    const showHumidity = config.show_humidity !== false;
-    const showWindDirection = config.show_wind_direction !== false;
+    const humidity = config.show_humidity ? this.getCurrentWeatherAttribute('humidity') : undefined;
+    const wind_bearing = config.show_wind_bearing ? this.getCurrentWeatherAttribute('wind_bearing') : undefined;
+    const uv_index = config.show_uv_index ? this.getCurrentWeatherAttribute('uv_index') : undefined;
+    const dew_point = config.show_dew_point ? this.getCurrentWeatherAttribute('dew_point') : undefined;
+
     const showSun = config.show_sun !== false;
-    const showDewpoint = config.show_dew_point == true;
-    const showWindgustspeed = config.show_wind_gust_speed == true;
-    const showVisibility = config.show_visibility == true;
 
     return html`
     <div class="attributes">
-      ${((showHumidity && humidity !== undefined) || pressure !== undefined || (showDewpoint && dew_point !== undefined) || (showVisibility && visibility !== undefined)) ? html`
+      ${(humidity !== undefined || pressure !== undefined || dew_point !== undefined || visibility !== undefined) ? html`
         <div>
-          ${showHumidity && humidity !== undefined ? html`
+          ${humidity !== undefined ? html`
             <ha-icon icon="hass:water-percent"></ha-icon> ${humidity} %<br>
           ` : ''}
           ${pressure !== undefined ? html`
-            <ha-icon icon="hass:gauge"></ha-icon> ${pressure} ${this.ll('units')[this.unitPressure]} <br>
+            <ha-icon icon="hass:gauge"></ha-icon> ${pressure} <br>
           ` : ''}
-          ${showDewpoint && dew_point !== undefined ? html`
+          ${dew_point !== undefined ? html`
             <ha-icon icon="hass:thermometer-water"></ha-icon> ${dew_point} ${this.weather.attributes.temperature_unit} <br>
           ` : ''}
-          ${showVisibility && visibility !== undefined ? html`
-            <ha-icon icon="hass:eye"></ha-icon> ${visibility} ${this.weather.attributes.visibility_unit} <br>
+          ${visibility !== undefined ? html`
+            <ha-icon icon="hass:eye"></ha-icon> ${visibility} <br>
           ` : ''}
           ${option1 ? html`${option1.attributes.friendly_name} ${option1.state} ${option1.attributes.unit_of_measurement}` : ''}
 	</div>
       ` : ''}
-      ${((showSun && sun !== undefined) || (typeof uv_index !== 'undefined' && uv_index !== undefined)) ? html`
+      ${((showSun && sun !== undefined) || uv_index !== undefined) ? html`
         <div>
-          ${typeof uv_index !== 'undefined' && uv_index !== undefined ? html`
+          ${uv_index !== undefined ? html`
             <div>
-              <ha-icon icon="hass:white-balance-sunny"></ha-icon> UV: ${Math.round(uv_index * 10) / 10}
+              <ha-icon icon="hass:white-balance-sunny"></ha-icon> UV: ${uv_index}
             </div>
           ` : ''}
           ${showSun && sun !== undefined ? html`
@@ -1267,18 +1269,18 @@ class HTRNWeatherChartCard extends LitElement {
           ${option2 ? html`${option2.attributes.friendly_name} ${option2.state} ${option2.attributes.unit_of_measurement}` : ''}
 	</div>
       ` : ''}
-      ${((showWindDirection && windDirection !== undefined) || windSpeed !== undefined) ? html`
+      ${(wind_bearing !== undefined || wind_speed !== undefined) ? html`
         <div>
-          ${showWindDirection && windDirection !== undefined ? html`
-            <ha-icon icon="hass:${this.getWindDirIcon(windDirection)}"></ha-icon> ${this.getWindDir(windDirection)} <br>
+          ${wind_bearing !== undefined ? html`
+            <ha-icon icon="hass:${this.getWindDirIcon(wind_bearing)}"></ha-icon> ${this.getWindDir(wind_bearing)} <br>
           ` : ''}
-          ${windSpeed !== undefined ? html`
+          ${wind_speed !== undefined ? html`
             <ha-icon icon="hass:weather-windy"></ha-icon>
-            ${windSpeed} ${this.ll('units')[this.config.units.speed]} <br>
+            ${wind_speed} <br>
           ` : ''}
-          ${showWindgustspeed && wind_gust_speed !== undefined ? html`
+          ${wind_gust_speed !== undefined ? html`
             <ha-icon icon="hass:weather-windy-variant"></ha-icon>
-            ${wind_gust_speed} ${this.ll('units')[this.config.units.speed]} <br>
+            ${wind_gust_speed} <br>
           ` : ''}
           ${option3 ? html`${option3.attributes.friendly_name} ${option3.state} ${option3.attributes.unit_of_measurement}` : ''}
 	</div>
@@ -1366,7 +1368,7 @@ class HTRNWeatherChartCard extends LitElement {
   `;
   }
 
-  renderWind({ config, weather, windSpeed, windDirection, forecastItems } = this) {
+  renderWindForecast({ config, forecastItems } = this) {
     const showWindForecast = config.forecast.show_wind_forecast !== false;
 
     if (!showWindForecast) {
