@@ -17956,20 +17956,18 @@ setConfig(config) {
 }
 
 set hass(hass) {
+  this.weather = this.config.entity in hass.states ? hass.states[this.config.entity] : null;
+  if (!this.weather) { // || this.weather.state == "unavailable") {
+    console.error(`weather entity ${this.config.entity} is absent`);
+    return;
+  }
+
   this._hass = hass;
   this.language = this.config.locale || hass.selectedLanguage || hass.language;
   this.sun = 'sun.sun' in hass.states ? hass.states['sun.sun'] : null;
   this.unitSpeed = this.config.units.speed ? this.config.units.speed : this.weather && this.weather.attributes.wind_speed_unit;
   this.unitPressure = this.config.units.pressure ? this.config.units.pressure : this.weather && this.weather.attributes.pressure_unit;
   this.unitVisibility = this.config.units.visibility ? this.config.units.visibility : this.weather && this.weather.attributes.visibility_unit;
-  this.weather = this.config.entity in hass.states
-    ? hass.states.get[this.config.entity]
-    : null;
-    
-  if (!this.weather) { // || this.weather.state == "unavailable") {
-    console.error(`weather entity ${this.config.entity} is absent`);
-    return;
-  }
   this.temperature = this.config.temp ? hass.states[this.config.temp].state : this.weather.attributes.temperature;
   this.humidity = this.config.humid ? hass.states[this.config.humid].state : this.weather.attributes.humidity;
   this.pressure = this.config.press ? hass.states[this.config.press].state : this.weather.attributes.pressure;
