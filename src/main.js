@@ -517,14 +517,6 @@ drawChart({ config, language } = this, recursionDepth = 0) {
   if (this.forecastChart) {
     this.forecastChart.destroy();
   }
-  var tempUnit = this._hass.config.unit_system.temperature;
-  var lengthUnit = this._hass.config.unit_system.length;
-  if (config.forecast.precipitation_type === 'probability') {
-    var precipUnit = '%';
-  } else {
-    var precipUnit = lengthUnit === 'km' ? this.ll('units')['mm'] : this.ll('units')['in'];
-  }
-  const data = this.computeForecastData();
 
   var style = getComputedStyle(document.body);
   var backgroundColor = style.getPropertyValue('--card-background-color');
@@ -534,14 +526,18 @@ drawChart({ config, language } = this, recursionDepth = 0) {
   const ctx = chartCanvas.getContext('2d');
 
   let precipMax;
+  let precipUnit;
 
   if (config.forecast.precipitation_type === 'probability') {
     precipMax = 100;
+    precipUnit = '%';
   } else {
-    if (config.forecast.type === 'hourly') {
-      precipMax = lengthUnit === 'km' ? 4 : 1;
+    if (getUnit('length') === 'km') {
+      precipMax = config.forecast.type === 'hourly' ? 4 : 20;
+      precipUnit = 'mm';
     } else {
-      precipMax = lengthUnit === 'km' ? 20 : 1;
+      precipMax = config.forecast.type === 'hourly' ? 1 : 5;
+      precipUnit = 'in';
     }
   }
 
@@ -553,79 +549,41 @@ drawChart({ config, language } = this, recursionDepth = 0) {
   Chart.defaults.elements.point.radius = 2;
   Chart.defaults.elements.point.hitRadius = 10;
 
-  var datasets = [
-    {
-      label: this.ll('tempHi'),
-      type: 'line',
-      data: data.tempHigh,
-      spanGaps: true,
-      yAxisID: 'TempAxis',
-      borderColor: config.forecast.temperature1_color,
-      backgroundColor: config.forecast.temperature1_color,
-    },
-    {
-      label: this.ll('tempLo'),
-      type: 'line',
-      data: data.tempLow,
-      spanGaps: true,
-      yAxisID: 'TempAxis',
-      borderColor: config.forecast.temperature2_color,
-      backgroundColor: config.forecast.temperature2_color,
-    },
-    {
-      label: this.ll('precip'),
-      type: 'bar',
-      data: data.precip,
-      yAxisID: 'PrecipAxis',
-      borderColor: config.forecast.precipitation_color,
-      backgroundColor: config.forecast.precipitation_color,
-      barPercentage: config.forecast.precip_bar_size / 100,
-      categoryPercentage: 1.0,
-      datalabels: {
-        display: function (context) {
-          return context.dataset.data[context.dataIndex] > 0 ? 'true' : false;
-        },
-      formatter: function (value, context) {
-        const precipitationType = config.forecast.precipitation_type;
-
-        const rainfall = context.dataset.data[context.dataIndex];
-        const probability = data.forecast[context.dataIndex].precipitation_probability;
-
-        let formattedValue;
-        if (precipitationType === 'rainfall') {
-          if (probability !== undefined && probability !== null && config.forecast.show_probability) {
-	    formattedValue = `${rainfall > 9 ? Math.round(rainfall) : rainfall.toFixed(1)} ${precipUnit}\n${Math.round(probability)}%`;
-          } else {
-            formattedValue = `${rainfall > 9 ? Math.round(rainfall) : rainfall.toFixed(1)}${precipUnit}`;
-          }
-        } else {
-          //formattedValue = `${rainfall > 9 ? Math.round(rainfall) : rainfall.toFixed(1)}${precipUnit}`;
-          formattedValue = `${Math.round(rainfall)}${precipUnit}`;
-        }
-
-        formattedValue = formattedValue.replace('\n', '\n\n');
-
-        return formattedValue;
-      },
-        textAlign: 'center',
-        textBaseline: 'middle',
-        align: 'top',
-        anchor: 'start',
-        offset: -10,
-      },
-    },
-  ];
+  const {
+    forecast,
+    dateTime,
+    tempHigh,
+    tempLow,
+    precip,
+  } = this.computeForecastData();
 
   const chart_text_color = (config.forecast.chart_text_color === 'auto') ? textColor : config.forecast.chart_text_color;
 
-  if (config.forecast.style === 'style2') {
-    datasets[0].datalabels = {
-      display: function (context) {
-        return 'true';
-      },
-      formatter: function (value, context) {
-        return context.dataset.data[context.dataIndex] + '°';
-      },
+  const defaultDatalabels = {
+    backgroundColor: backgroundColor,
+    borderColor: context => context.dataset.backgroundColor,
+    borderRadius: 5,
+    borderWidth: 1,
+    padding: config.forecast.precipitation_type === 'rainfall' && config.forecast.show_probability && config.forecast.type !== 'hourly' ? 3 : 4,
+    color: chart_text_color || textColor,
+    font: {
+      size: config.forecast.labels_font_size,
+      lineHeight: 0.7,
+    },
+    formatter: function (value, context) {
+      return context.dataset.data[context.dataIndex] + '°';
+    },
+  };
+
+  const tempHiDataset = {
+    label: this.ll('tempHi'),
+    type: 'line',
+    data: tempHigh,
+    spanGaps: true,
+    yAxisID: 'TempAxis',
+    borderColor: config.forecast.temperature1_color,
+    backgroundColor: config.forecast.temperature1_color,
+    datalabels: config.forecast.style !== 'style2' ? defaultDatalabels : {...defaultDatalabels,
       align: 'top',
       anchor: 'center',
       backgroundColor: 'transparent',
@@ -635,15 +593,18 @@ drawChart({ config, language } = this, recursionDepth = 0) {
         size: parseInt(config.forecast.labels_font_size) + 1,
         lineHeight: 0.7,
       },
-    };
+    },
+  };
 
-    datasets[1].datalabels = {
-      display: function (context) {
-        return 'true';
-      },
-      formatter: function (value, context) {
-        return context.dataset.data[context.dataIndex] + '°';
-      },
+  const tempLoDataset = {
+    label: this.ll('tempLo'),
+    type: 'line',
+    data: tempLow,
+    spanGaps: true,
+    yAxisID: 'TempAxis',
+    borderColor: config.forecast.temperature2_color,
+    backgroundColor: config.forecast.temperature2_color,
+    datalabels: config.forecast.style !== 'style2' ? defaultDatalabels : {...defaultDatalabels,
       align: 'bottom',
       anchor: 'center',
       backgroundColor: 'transparent',
@@ -653,14 +614,66 @@ drawChart({ config, language } = this, recursionDepth = 0) {
         size: parseInt(config.forecast.labels_font_size) + 1,
         lineHeight: 0.7,
       },
-    };
-  }
+      formatter: function (value, context) {
+        return context.dataset.data[context.dataIndex] + '°';
+      },
+    },
+  };
+
+  const precipDataset = {
+    label: this.ll('precip'),
+    type: 'bar',
+    data: precip,
+    yAxisID: 'PrecipAxis',
+    borderColor: config.forecast.precipitation_color,
+    backgroundColor: config.forecast.precipitation_color,
+    barPercentage: config.forecast.precip_bar_size / 100,
+    categoryPercentage: 1.0,
+    datalabels: {...defaultDatalabels,
+      textAlign: 'center',
+      textBaseline: 'middle',
+      align: 'top',
+      anchor: 'start',
+      offset: -10,
+  
+      display: function (context) {
+        return context.dataset.data[context.dataIndex] > 0;
+      },
+      formatter: function (value, context) {
+        const rainfall = context.dataset.data[context.dataIndex];
+        let formattedValue = `${rainfall.toFixed(rainfall > 1 ? 0 : 1)} ${this.ll('units')[precipUnit]}`;
+  
+        if (config.forecast.show_probability && config.forecast.precipitation_type !== 'probability') {
+          const probability = forecast[context.dataIndex].precipitation_probability;
+          if (probability !== undefined && probability !== null) {
+            formattedValue += `\n\n${probability.toFixed(0)}%`;
+          }
+        }
+        return formattedValue;
+      },
+    },
+
+    tooltip: {
+      callbacks: {
+        label: function (context) {
+          let formattedLabel = `${context.dataset.label}: ${context.formattedValue}`;
+          if (!config.forecast.show_probability && config.forecast.precipitation_type !== 'probability') {
+            const probability = forecast[context.dataIndex].precipitation_probability;
+            if (probability !== undefined && probability !== null) {
+              formattedLabel += ` / ${probability.toFixed(0)}%`;
+            }
+          }
+          return formattedLabel;
+        },
+      },
+    },
+  };
 
   this.forecastChart = new Chart(ctx, {
     type: 'bar',
     data: {
-      labels: data.dateTime,
-      datasets: datasets,
+      labels: dateTime,
+      datasets: [tempHiDataset, tempLoDataset, precipDataset],
     },
     options: {
       maintainAspectRatio: false,
@@ -715,8 +728,8 @@ drawChart({ config, language } = this, recursionDepth = 0) {
         TempAxis: {
           position: 'left',
           beginAtZero: false,
-          suggestedMin: Math.min(...data.tempHigh.filter(v=>v!=null), ...data.tempLow.filter(v=>v!=null)) - 5,
-          suggestedMax: Math.max(...data.tempHigh.filter(v=>v!=null), ...data.tempLow.filter(v=>v!=null)) + 3,
+          suggestedMin: Math.min(...tempHigh.filter(v=>v!=null), ...tempLow.filter(v=>v!=null)) - 5,
+          suggestedMax: Math.max(...tempHigh.filter(v=>v!=null), ...tempLow.filter(v=>v!=null)) + 3,
           grid: {
             display: false,
             drawTicks: false,
@@ -741,21 +754,6 @@ drawChart({ config, language } = this, recursionDepth = 0) {
         legend: {
           display: false,
         },
-        datalabels: {
-          backgroundColor: backgroundColor,
-          borderColor: context => context.dataset.backgroundColor,
-          borderRadius: 5,
-          borderWidth: 1,
-          padding: config.forecast.precipitation_type === 'rainfall' && config.forecast.show_probability && config.forecast.type !== 'hourly' ? 3 : 4,
-          color: chart_text_color || textColor,
-          font: {
-            size: config.forecast.labels_font_size,
-            lineHeight: 0.7,
-          },
-          formatter: function (value, context) {
-            return context.dataset.data[context.dataIndex] + '°';
-          },
-        },
         tooltip: {
           caretSize: 0,
           caretPadding: 15,
@@ -772,16 +770,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
               });
             },
             label: function (context) {
-              var label = context.dataset.label;
-              var value = context.formattedValue;
-              var probability = data.forecast[context.dataIndex].precipitation_probability;
-              var unit = context.datasetIndex === 2 ? precipUnit : tempUnit;
-        
-              if (config.forecast.precipitation_type === 'rainfall' && context.datasetIndex === 2 && config.forecast.show_probability && probability !== undefined && probability !== null) {
-                return label + ': ' + value + precipUnit + ' / ' + Math.round(probability) + '%';
-              } else {
-                return label + ': ' + value + unit;
-              }
+              return `${context.dataset.label}: ${context.formattedValue}`;
             },
           },
         },
@@ -798,37 +787,38 @@ computeForecastData({ config, forecastItems } = this) {
   var tempLow = [];
   var precip = [];
 
-  for (var i = 0; i < forecast.length; i++) {
-    var d = forecast[i];
+  for (const d of forecast) {
     if (config.autoscroll) {
       const cutoff = (config.forecast.type === 'hourly' ? 1 : 24) * 60 * 60 * 1000;
       if (new Date() - new Date(d.datetime) > cutoff) {
         continue;
       }
     }
+    dateTime.push(d.datetime);
+
+    let tempHighVal = null, tempLowVal = null;
     if (config.forecast.type === 'twice_daily' ) {
-      dateTime.push(d.datetime);
       if (d.is_daytime || this.mode == 'hourly') {
-        tempHigh.push(d.temperature);
-        tempLow.push(null);
+        tempHighVal = d.temperature;
       } else {
-        tempHigh.push(null);
-        tempLow.push(d.temperature);
+        tempLowVal = d.temperature;
       }
     } else {
-      dateTime.push(d.datetime);
-      tempHigh.push(d.temperature);
+      tempHighVal = d.temperature;
       if (typeof d.templow !== 'undefined') {
-        tempLow.push(d.templow);
+        tempLowVal = d.templow;
       }
   
       if (roundTemp) {
-        tempHigh[i] = Math.round(tempHigh[i]);
-        if (typeof d.templow !== 'undefined') {
-          tempLow[i] = Math.round(tempLow[i]);
+        tempHighVal = Math.round(tempHighVal);
+        if (typeof tempLowVal === 'number') {
+          tempLowVal = Math.round(tempLowVal);
         }
       }
     }
+    tempHigh.push(tempHighVal);
+    tempLow.push(tempLowVal);
+
     if (config.forecast.precipitation_type === 'probability') {
       if (typeof d.precipitation_probability == 'number') {
         precip.push(d.precipitation_probability);
@@ -858,13 +848,19 @@ updateChart({ forecasts, forecastChart } = this) {
     return [];
   }
 
-  const data = this.computeForecastData();
-
   if (forecastChart) {
-    forecastChart.data.labels = data.dateTime;
-    forecastChart.data.datasets[0].data = data.tempHigh;
-    forecastChart.data.datasets[1].data = data.tempLow;
-    forecastChart.data.datasets[2].data = data.precip;
+    const {
+      forecast,
+      dateTime,
+      tempHigh,
+      tempLow,
+      precip,
+    } = this.computeForecastData();
+
+    forecastChart.data.labels = dateTime;
+    forecastChart.data.datasets[0].data = tempHigh;
+    forecastChart.data.datasets[1].data = tempLow;
+    forecastChart.data.datasets[2].data = precip;
     forecastChart.update();
   }
 }
@@ -1017,7 +1013,7 @@ updateChart({ forecasts, forecastChart } = this) {
           font-weight: 400;
         }
         .main .description {
-	  font-style: italic;
+	        font-style: italic;
           font-size: 13px;
           margin-top: 5px;
           font-weight: 400;
