@@ -18010,7 +18010,7 @@ subscribeForecastEvents() {
   //}
 
   if (this.subscription) {
-    console.log('Already subscribed for messages with type: weather/subscribe_forecast');
+    console.debug('Already subscribed for messages with type: weather/subscribe_forecast');
     return;
   }
 
@@ -18321,13 +18321,13 @@ cancelAutoscroll() {
 
 drawChart({ config, language } = this) {
   if (!this.forecast || !this.forecast.length) {
-    console.log('drawChart: no forecast');
+    console.debug('drawChart: no forecast');
     return;
   }
 
   const forecastCanvas = this.renderRoot && this.renderRoot.querySelector('canvas#forecastCanvas');
   if (!forecastCanvas) {
-    console.log('drawChart: canvas element not found');
+    console.debug('drawChart: canvas element not found');
     return;
   }
 
