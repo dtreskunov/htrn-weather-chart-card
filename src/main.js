@@ -13,6 +13,57 @@ import { Chart, registerables } from 'chart.js';
 import ChartDataLabels from 'chartjs-plugin-datalabels';
 Chart.register(...registerables, ChartDataLabels);
 
+const DEFAULT_CONFIG = {
+  animated_icons: false,
+  autoscroll: false,
+  current_temp_size: 28,
+  day_date_size: 15,
+  icon_style: 'style1',
+  icons_size: 25,
+  show_attributes: true,
+  show_current_condition: true,
+  show_date: false,
+  show_day: false,
+  show_description: false,
+  show_dew_point: false,
+  show_feels_like: false,
+  show_humidity: true,
+  show_last_changed: false,
+  show_main: true,
+  show_pressure: true,
+  show_sun: true,
+  show_temperature: true,
+  show_time_seconds: false,
+  show_time: false,
+  show_visibility: false,
+  show_wind_direction: true,
+  show_wind_gust_speed: false,
+  show_wind_speed: true,
+  time_size: 26,
+  use_12hour_format: false,
+  forecast: {
+    chart_height: 180,
+    condition_icons: true,
+    disable_animation: false,
+    labels_font_size: 11,
+    number_of_forecasts: 0,
+    precip_bar_size: 100,
+    precipitation_color: 'rgba(132, 209, 253, 1.0)',
+    precipitation_type: 'rainfall',
+    round_temp: false,
+    show_probability: false,
+    show_wind_forecast: true,
+    style: 'style1',
+    temperature1_color: 'rgba(255, 152, 0, 1.0)',
+    temperature2_color: 'rgba(68, 115, 158, 1.0)',
+    type: 'daily',
+  },
+  units: {
+    pressure: 'hPa',
+    speed: 'km/h',
+  },
+}
+
 class HTRNWeatherChartCard extends LitElement {
 
   static getConfigElement() {
@@ -25,43 +76,8 @@ class HTRNWeatherChartCard extends LitElement {
       entity = allEntities.find((eid) => eid.split(".")[0] === "weather");
     }
     return {
+      ...DEFAULT_CONFIG,
       entity,
-      show_main: true,
-      show_temperature: true,
-      show_current_condition: true,
-      show_attributes: true,
-      show_time: false,
-      show_time_seconds: false,
-      show_day: false,
-      show_date: false,
-      show_humidity: true,
-      show_pressure: true,
-      show_wind_direction: true,
-      show_wind_speed: true,
-      show_sun: true,
-      show_feels_like: false,
-      show_dew_point: false,
-      show_wind_gust_speed: false,
-      show_visibility: false,
-      show_last_changed: false,
-      use_12hour_format: false,
-      icons_size: 25,
-      animated_icons: false,
-      icon_style: 'style1',
-      autoscroll: false,
-      forecast: {
-        precipitation_type: 'rainfall',
-        show_probability: false,
-        labels_font_size: '11',
-        precip_bar_size: '100',
-        style: 'style1',
-        show_wind_forecast: true,
-        condition_icons: true,
-        round_temp: false,
-        type: 'daily',
-        number_of_forecasts: '0',
-        disable_animation: false,
-      },
     };
   }
 
@@ -87,50 +103,22 @@ class HTRNWeatherChartCard extends LitElement {
   }
 
   setConfig(config) {
-    const cardConfig = {
-      icons_size: 25,
-      animated_icons: false,
-      icon_style: 'style1',
-      current_temp_size: 28,
-      time_size: 26,
-      day_date_size: 15,
-      show_feels_like: false,
-      show_dew_point: false,
-      show_wind_gust_speed: false,
-      show_visibility: false,
-      show_last_changed: false,
-      show_description: false,
-      ...config,
-      forecast: {
-        precipitation_type: 'rainfall',
-        show_probability: false,
-        labels_font_size: 11,
-        chart_height: 180,
-        precip_bar_size: 100,
-        style: 'style1',
-        temperature1_color: 'rgba(255, 152, 0, 1.0)',
-        temperature2_color: 'rgba(68, 115, 158, 1.0)',
-        precipitation_color: 'rgba(132, 209, 253, 1.0)',
-        condition_icons: true,
-        show_wind_forecast: true,
-        round_temp: false,
-        type: 'daily',
-        number_of_forecasts: '0',
-        '12hourformat': false,
-        ...config.forecast,
-      },
-      units: {
-        pressure: 'hPa',
-        ...config.units,
-      }
-    };
-
-    cardConfig.units.speed = config.speed ? config.speed : cardConfig.units.speed;
-
-    this.config = cardConfig;
     if (!config.entity) {
       throw new Error('Please, define entity in the card config');
     }
+
+    this.config = {
+      ...DEFAULT_CONFIG,
+      ...config,
+      forecast: {
+        ...DEFAULT_CONFIG.forecast,
+        ...config.forecast,
+      },
+      units: {
+        ...DEFAULT_CONFIG.units,
+        ...config.units,
+      }
+    };
   }
 
   set hass(hass) {
