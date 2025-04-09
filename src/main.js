@@ -151,7 +151,7 @@ class HTRNWeatherChartCard extends LitElement {
       return undefined;
     }
     const [entity_id, attr] = source.split('.', 2);
-    const entity = hass.states[entity_id || this.config.entity];
+    const entity = this.hass.states[entity_id || this.config.entity];
 
     if (!entity) {
       console.debug(`Weather attribute ${name} not found in ${source}`);
