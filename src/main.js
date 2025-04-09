@@ -514,10 +514,6 @@ drawChart({ config, language } = this, recursionDepth = 0) {
     console.log(`Canvas element found after ${recursionDepth} frames`);
   }
 
-  if (this.forecastChart) {
-    this.forecastChart.destroy();
-  }
-
   var style = getComputedStyle(document.body);
   var backgroundColor = style.getPropertyValue('--card-background-color');
   var textColor = style.getPropertyValue('--primary-text-color');
@@ -654,6 +650,9 @@ drawChart({ config, language } = this, recursionDepth = 0) {
     },
   };
 
+  if (this.forecastChart) {
+    this.forecastChart.destroy();
+  }
   this.forecastChart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -682,7 +681,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
               maxRotation: 0,
               color: config.forecast.chart_datetime_color || textColor,
               padding: config.forecast.precipitation_type === 'rainfall' && config.forecast.show_probability && config.forecast.type !== 'hourly' ? 4 : 10,
-              callback: (value, index, values) => {
+              callback: function(value, index, values) {
                 const dateObj = new Date(this.getLabelForValue(value));
                 const time = date.toLocaleTimeString(language, {
                   hour12: config.use_12hour_format,
