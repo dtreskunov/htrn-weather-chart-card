@@ -1103,39 +1103,39 @@ class HTRNWeatherChartCard extends LitElement {
   `;
   }
 
-  convertSpeed(speed, round = true) {
+  convertSpeed(input, round = true) {
     const inputUnit = this.weather.attributes.wind_speed_unit;
     const outputUnit = this.config.units.speed;
-    let converted;
+    let output;
 
     if (!inputUnit) {
       console.warn(`Unable to convert speed because ${this.config.entity} lacks attribute wind_speed_unit`);
-      converted = speed;
+      output = input;
     } else if (outputUnit === inputUnit) {
-      converted = speed;
+      output = input;
     } else if (outputUnit === 'm/s') {
       if (inputUnit === 'km/h') {
-        converted = item.wind_speed * 1000 / 3600;
+        output = input * 1000 / 3600;
       } else if (inputUnit === 'mph') {
-        converted = item.wind_speed * 0.44704;
+        output = input * 0.44704;
       }
     } else if (outputUnit === 'km/h') {
       if (inputUnit === 'm/s') {
-        converted = item.wind_speed * 3.6;
+        output = input * 3.6;
       } else if (inputUnit === 'mph') {
-        converted = item.wind_speed * 1.60934;
+        output = input * 1.60934;
       }
     } else if (outputUnit === 'mph') {
       if (inputUnit === 'm/s') {
-        converted = item.wind_speed / 0.44704;
+        output = input / 0.44704;
       } else if (inputUnit === 'km/h') {
-        converted = item.wind_speed / 1.60934;
+        output = input / 1.60934;
       }
     } else if (outputUnit === 'Bft') {
-      converted = this.calculateBeaufortScale(item.wind_speed);
+      output = this.calculateBeaufortScale(input);
     }
     if (round) {
-      return Math.round(converted);
+      return Math.round(output);
     }
   }
 
