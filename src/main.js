@@ -532,7 +532,7 @@ drawChart({ config, language } = this, recursionDepth = 0) {
     precipMax = 100;
     precipUnit = '%';
   } else {
-    if (getUnit('length') === 'km') {
+    if (this.getUnit('length') === 'km') {
       precipMax = config.forecast.type === 'hourly' ? 4 : 20;
       precipUnit = 'mm';
     } else {
