@@ -18492,7 +18492,7 @@ class HTRNWeatherChartCard extends s {
 
     const precipProbabilityDataset = {
       label: this.ll('precip'),
-      type: 'line',
+      type: 'bar',
       data: precipProbability,
       yAxisID: 'PrecipProbabilityAxis',
       borderColor: config.forecast.precipitation_color,
@@ -18552,7 +18552,7 @@ class HTRNWeatherChartCard extends s {
 
                 if (config.forecast.type === 'hourly') {
                   if (dateObj.getHours() === 0 && dateObj.getMinutes() === 0) {
-                    return [weekday, time];
+                    return [weekday, time]; // if the displayed hourly forecast crosses midnight, add weekday to label
                   } else {
                     return time;
                   }
@@ -18578,7 +18578,9 @@ class HTRNWeatherChartCard extends s {
           },
           PrecipAmountAxis: {
             position: 'right',
+            beginAtZero: true,
             suggestedMax: outputPrecipUnit === 'mm' ? (config.forecast.type === 'hourly' ? 4 : 20) : (config.forecast.type === 'hourly' ? 1 : 5),
+            stacked: true,
             grid: {
               display: false,
               drawTicks: false,
@@ -18591,6 +18593,8 @@ class HTRNWeatherChartCard extends s {
             position: 'right',
             beginAtZero: true,
             suggestedMax: 100,
+            reverse: true,
+            stacked: true,
             grid: {
               display: false,
               drawTicks: false,
