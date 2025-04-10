@@ -1414,31 +1414,19 @@ class HTRNWeatherChartCard extends LitElement {
   }
 
   renderLastUpdated() {
-    const lastUpdatedString = this.weather.last_changed;
-    const lastUpdatedTimestamp = new Date(lastUpdatedString).getTime();
-    const currentTimestamp = Date.now();
-    const timeDifference = currentTimestamp - lastUpdatedTimestamp;
-
-    const minutesAgo = Math.floor(timeDifference / (1000 * 60));
-    const hoursAgo = Math.floor(minutesAgo / 60);
-
-    const locale = this.language;
-
-    const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
-
-    let formattedLastUpdated;
-
-    if (hoursAgo > 0) {
-      formattedLastUpdated = formatter.format(-hoursAgo, 'hour');
-    } else {
-      formattedLastUpdated = formatter.format(-minutesAgo, 'minute');
-    }
-
-    const showLastUpdated = this.config.show_last_changed == true;
-
-    if (!showLastUpdated) {
+    if (!this.config.show_last_changed) {
       return html``;
     }
+
+    const millisecondsAgo = Date.now() - new Date(this.weather.last_updated);
+    const minutesAgo = Math.floor(millisecondsAgo / (1000 * 60));
+    const hoursAgo = Math.floor(minutesAgo / 60);
+
+    const formatter = new Intl.RelativeTimeFormat(this.language, { numeric: 'auto' });
+
+    const formattedLastUpdated = hoursAgo > 0 ?
+      formatter.format(-hoursAgo, 'hour') :
+      formatter.format(-minutesAgo, 'minute');
 
     return html`
       <div class="updated">
