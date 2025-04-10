@@ -17867,14 +17867,15 @@ const DEFAULT_CONFIG = {
   forecast: {
     chart_height: 180,
     condition_icons: true,
-    disable_animation: false,
+    disable_animation: true,
     labels_font_size: 11,
     number_of_forecasts: 0,
     precip_bar_size: 100,
     precipitation_color: 'rgba(132, 209, 253, 1.0)',
-    precipitation_type: 'rainfall',
-    round_temp: false,
-    show_probability: false,
+    // precipitation_type: 'rainfall',
+    show_precipitation_amount: true,
+    show_precipitation_probability: true,
+    // show_probability: false,
     show_wind_forecast: true,
     style: 'style1',
     temperature1_color: 'rgba(255, 152, 0, 1.0)',
@@ -17883,8 +17884,10 @@ const DEFAULT_CONFIG = {
   },
   units: {
     distance: 'km',
+    precipitation: 'mm',
     pressure: 'hPa',
     speed: 'km/h',
+    temperature: '°C',
   },
   sources: {
     temperature: 'temperature',
@@ -18009,18 +18012,6 @@ class HTRNWeatherChartCard extends s {
     this.sun = 'sun.sun' in hass.states ? hass.states['sun.sun'] : null;
     this.unitPressure = this.config.units.pressure ? this.config.units.pressure : this.weather && this.weather.attributes.pressure_unit;
     this.unitVisibility = this.config.units.visibility ? this.config.units.visibility : this.weather && this.weather.attributes.visibility_unit;
-
-    // this.temperature = this.getCurrentWeatherAttribute('temperature');
-    // this.humidity = this.getCurrentWeatherAttribute('humidity');
-    // this.pressure = this.getCurrentWeatherAttribute('pressure');
-    // this.uv_index = this.getCurrentWeatherAttribute('uv_index');
-    // this.windSpeed = this.getCurrentWeatherAttribute('wind_speed');
-    // this.dew_point = this.getCurrentWeatherAttribute('dew_point');
-    // this.wind_gust_speed = this.getCurrentWeatherAttribute('wind_gust_speed');
-    // this.visibility = this.getCurrentWeatherAttribute('visibility');
-    // this.windDirection = this.getCurrentWeatherAttribute('wind_bearing');
-    // this.feels_like = this.getCurrentWeatherAttribute('apparent_temperature');
-    // this.description = this.config.description && hass.states[this.config.description] ? hass.states[this.config.description].state : this.weather.attributes.description;
 
     this.option1 = this.config.option1 in hass.states ? hass.states[this.config.option1] : null;
     this.option2 = this.config.option2 in hass.states ? hass.states[this.config.option2] : null;
@@ -18370,22 +18361,11 @@ class HTRNWeatherChartCard extends s {
     var textColor = style.getPropertyValue('--primary-text-color');
     var dividerColor = style.getPropertyValue('--divider-color');
 
-    const tempUnit = this.getCurrentWeatherAttribute('temperature_unit');
-    let precipMax;
-    let precipUnit;
+    const inputTempUnit = this.getCurrentWeatherAttribute('temperature_unit');
+    const inputPrecipUnit = this.getCurrentWeatherAttribute('precipitation_unit');
 
-    if (config.forecast.precipitation_type === 'probability') {
-      precipMax = 100;
-      precipUnit = '%';
-    } else {
-      if (this.getUnit('length') === 'km') {
-        precipMax = config.forecast.type === 'hourly' ? 4 : 20;
-        precipUnit = 'mm';
-      } else {
-        precipMax = config.forecast.type === 'hourly' ? 1 : 5;
-        precipUnit = 'in';
-      }
-    }
+    const outputPrecipUnit = this.config.units.precipitation;
+    this.config.units.temperature;
 
     Chart.defaults.color = textColor;
     Chart.defaults.scale.grid.color = dividerColor;
@@ -18399,7 +18379,8 @@ class HTRNWeatherChartCard extends s {
       dateTime,
       tempHigh,
       tempLow,
-      precip,
+      precipAmount,
+      precipProbability,
     } = this.computeForecastData();
 
     const chart_text_color = (config.forecast.chart_text_color === 'auto') ? textColor : config.forecast.chart_text_color;
@@ -18434,6 +18415,11 @@ class HTRNWeatherChartCard extends s {
         borderColor: 'transparent',
         color: chart_text_color || config.forecast.temperature1_color,
       },
+      tooltip: {
+        callbacks: {
+          label: context => `${context.dataset.label}: ${context.formattedValue}${inputTempUnit}`,
+        },
+      }
     };
 
     const tempLoDataset = {
@@ -18452,13 +18438,18 @@ class HTRNWeatherChartCard extends s {
         borderColor: 'transparent',
         color: chart_text_color || config.forecast.temperature2_color,
       },
+      tooltip: {
+        callbacks: {
+          label: context => `${context.dataset.label}: ${context.formattedValue}${inputTempUnit}`,
+        },
+      }
     };
 
-    const precipDataset = {
+    const precipAmountDataset = {
       label: this.ll('precip'),
       type: 'bar',
-      data: precip,
-      yAxisID: 'PrecipAxis',
+      data: precipAmount,
+      yAxisID: 'PrecipAmountAxis',
       borderColor: config.forecast.precipitation_color,
       backgroundColor: config.forecast.precipitation_color,
       barPercentage: config.forecast.precip_bar_size / 100,
@@ -18473,24 +18464,20 @@ class HTRNWeatherChartCard extends s {
 
         display: context => context.dataset.data[context.dataIndex] > 0,
         formatter: (value, context) => {
-          const rainfall = context.dataset.data[context.dataIndex];
-          let formattedValue = `${rainfall.toFixed(rainfall > 1 ? 0 : 1)} ${this.ll('units')[precipUnit]}`;
-
-          if (config.forecast.show_probability && config.forecast.precipitation_type !== 'probability') {
-            const probability = this.forecast[context.dataIndex].precipitation_probability;
-            if (probability !== undefined && probability !== null) {
-              formattedValue += `\n\n${probability.toFixed(0)}%`;
-            }
-          }
-          return formattedValue;
+          const inputPrecipValue = value; // context.dataset.data[context.dataIndex];
+          const rainfall = this.convertDistance(
+            inputPrecipValue,
+            inputPrecipUnit,
+            outputPrecipUnit);
+          return `${rainfall.toFixed(rainfall > 1 ? 0 : 1)} ${this.ll('units')[outputPrecipUnit]}`;
         },
       },
 
       tooltip: {
         callbacks: {
           label: context => {
-            let formattedLabel = `${context.dataset.label}: ${context.formattedValue}${precipUnit}`;
-            if (!config.forecast.show_probability && config.forecast.precipitation_type !== 'probability') {
+            let formattedLabel = `${context.dataset.label}: ${context.formattedValue}${outputPrecipUnit}`;
+            if (!config.forecast.show_precipitation_probability) {
               const probability = this.forecast[context.dataIndex].precipitation_probability;
               if (probability !== undefined && probability !== null) {
                 formattedLabel += ` / ${probability.toFixed(0)}%`;
@@ -18502,14 +18489,35 @@ class HTRNWeatherChartCard extends s {
       },
     };
 
+    const precipProbabilityDataset = {
+      label: this.ll('precip'),
+      type: 'line',
+      data: precipProbability,
+      yAxisID: 'PrecipProbabilityAxis',
+      borderColor: config.forecast.precipitation_color,
+      backgroundColor: config.forecast.precipitation_color,
+      datalabels: {
+        ...defaultDatalabels,
+        align: 'bottom',
+        anchor: 'center',
+        backgroundColor: 'transparent',
+        borderColor: 'transparent',
+        color: chart_text_color || config.forecast.precipitation_color,
+
+        display: context => context.dataset.data[context.dataIndex] > 0,
+        formatter: (value, context) => `${value.toFixed(0)}%`,
+      },
+    };
+
     if (this.forecastChart) {
       this.forecastChart.destroy();
     }
+
     this.forecastChart = new Chart(forecastCanvas.getContext('2d'), {
       type: 'bar',
       data: {
         labels: dateTime,
-        datasets: [tempHiDataset, tempLoDataset, precipDataset],
+        datasets: [tempHiDataset, tempLoDataset, precipAmountDataset, precipProbabilityDataset],
       },
       options: {
         maintainAspectRatio: false,
@@ -18567,9 +18575,21 @@ class HTRNWeatherChartCard extends s {
               display: false,
             },
           },
-          PrecipAxis: {
+          PrecipAmountAxis: {
             position: 'right',
-            suggestedMax: precipMax,
+            suggestedMax: outputPrecipUnit === 'mm' ? (config.forecast.type === 'hourly' ? 4 : 20) : (config.forecast.type === 'hourly' ? 1 : 5),
+            grid: {
+              display: false,
+              drawTicks: false,
+            },
+            ticks: {
+              display: false,
+            },
+          },
+          PrecipProbabilityAxis: {
+            position: 'right',
+            beginAtZero: true,
+            suggestedMax: 100,
             grid: {
               display: false,
               drawTicks: false,
@@ -18598,7 +18618,6 @@ class HTRNWeatherChartCard extends s {
                   hour12: config.use_12hour_format,
                 });
               },
-              label: context => `${context.dataset.label}: ${context.formattedValue}${tempUnit}`,
             },
           },
         },
@@ -18611,7 +18630,8 @@ class HTRNWeatherChartCard extends s {
     const dateTime = [];
     const tempHigh = [];
     const tempLow = [];
-    const precip = [];
+    const precipAmount = [];
+    const precipProbability = [];
 
     for (const forecastPoint of forecast) {
       if (config.autoscroll) {
@@ -18636,36 +18656,23 @@ class HTRNWeatherChartCard extends s {
           tempLowVal = forecastPoint.templow;
         }
 
-        if (config.forecast.round_temp == true) {
-          tempHighVal = Math.round(tempHighVal);
-          if (typeof tempLowVal === 'number') {
-            tempLowVal = Math.round(tempLowVal);
-          }
+        tempHighVal = Math.round(tempHighVal);
+        if (typeof tempLowVal === 'number') {
+          tempLowVal = Math.round(tempLowVal);
         }
       }
       tempHigh.push(tempHighVal);
       tempLow.push(tempLowVal);
-
-      if (config.forecast.precipitation_type === 'probability') {
-        if (typeof forecastPoint.precipitation_probability == 'number') {
-          precip.push(forecastPoint.precipitation_probability);
-        } else {
-          precip.push(0);
-        }
-      } else {
-        if (typeof forecastPoint.precipitation == 'number') {
-          precip.push(forecastPoint.precipitation);
-        } else {
-          precip.push(0);
-        }
-      }
+      precipAmount.push(parseFloat(forecastPoint.precipitation) || 0);
+      precipProbability.push(parseFloat(forecastPoint.precipitation_probability) || 0);
     }
 
     return {
       dateTime,
       tempHigh,
       tempLow,
-      precip,
+      precipAmount: this.config.forecast.show_precipitation_amount ? precipAmount : undefined,
+      precipProbability: this.config.forecast.show_precipitation_probability ? precipProbability : undefined,
     }
   }
 
@@ -18679,13 +18686,15 @@ class HTRNWeatherChartCard extends s {
         dateTime,
         tempHigh,
         tempLow,
-        precip,
+        precipAmount,
+        precipProbability,
       } = this.computeForecastData();
 
       forecastChart.data.labels = dateTime;
       forecastChart.data.datasets[0].data = tempHigh;
       forecastChart.data.datasets[1].data = tempLow;
-      forecastChart.data.datasets[2].data = precip;
+      forecastChart.data.datasets[2].data = precipAmount;
+      forecastChart.data.datasets[3].data = precipProbability;
       forecastChart.update();
     }
   }
@@ -18933,7 +18942,7 @@ class HTRNWeatherChartCard extends s {
       <div>
         <div>
           ${temperature ? x`${temperature.toFixed(0)}<span>${this.getUnit('temperature')}</span>` : ''}
-          ${apparentTemperature ? x`<div class="feels-like">${this.ll('feelsLike')}${apparentTemperature.toFixed(0)}${this.getUnit('temperature')}</div>` : ''}
+          ${apparentTemperature ? x`<div class="feels-like">${this.ll('feelsLike')} ${apparentTemperature.toFixed(0)}${this.getUnit('temperature')}</div>` : ''}
           ${current_condition ? x`
             <div class="current-condition">
               <span>${current_condition}</span>
@@ -19084,7 +19093,7 @@ class HTRNWeatherChartCard extends s {
             <ha-icon icon="hass:gauge"></ha-icon> ${pressure} <br>
           ` : ''}
           ${dew_point !== undefined ? x`
-            <ha-icon icon="hass:thermometer-water"></ha-icon> ${dew_point} ${this.weather.attributes.temperature_unit} <br>
+            <ha-icon icon="hass:thermometer-water"></ha-icon> ${dew_point.toFixed(0)} ${this.weather.attributes.temperature_unit} <br>
           ` : ''}
           ${visibility !== undefined ? x`
             <ha-icon icon="hass:eye"></ha-icon> ${visibility} <br>
